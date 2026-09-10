@@ -1,6 +1,9 @@
 import "server-only";
 
-import { FootballClient } from "@/lib/football/football-client";
+import {
+  FootballClient,
+  hasFootballApiToken,
+} from "@/lib/football/football-client";
 import { MockFootballClient } from "@/lib/football/mock-data";
 import type {
   Fixture,
@@ -43,6 +46,7 @@ export interface FootballService {
   getFixtureEvents(fixtureId: number): Promise<Fixture["events"]>;
   getFixtureStatistics(fixtureId: number): Promise<Fixture["statistics"]>;
   getFixtureLineups(fixtureId: number): Promise<Fixture["lineups"]>;
+  getFixtureStreams?(fixtureId: number): Promise<Fixture["streams"]>;
   getTopScorers(leagueId: number, season: number): Promise<Player[]>;
 }
 
@@ -51,7 +55,7 @@ let cachedService: FootballService | null = null;
 export function shouldUseMockData(): boolean {
   if (process.env.USE_MOCK_DATA === "true") return true;
   if (process.env.USE_MOCK_DATA === "false") return false;
-  return !process.env.FOOTBALL_API_KEY;
+  return !hasFootballApiToken();
 }
 
 export function getFootballService(): FootballService {
@@ -71,6 +75,11 @@ export function resetFootballService(): void {
 }
 
 export type { FootballClient };
+export {
+  hasFootballApiToken,
+  resolveFootballApiToken,
+  SportmonksClient,
+} from "@/lib/football/football-client";
 export { MockFootballClient } from "@/lib/football/mock-data";
 export * from "@/lib/football/football-mappers";
 export type * from "@/lib/football/football-types";

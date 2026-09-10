@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   connectRealtime,
   disconnectRealtime,
+  isRealtimeEnabled,
   subscribeToAllFixtures,
 } from "@/lib/realtime/client";
 import { REALTIME_EVENTS } from "@/lib/realtime/events";
@@ -13,12 +14,14 @@ import type { Fixture } from "@/types/football";
 
 /**
  * Keeps TanStack Query in sync with Socket.IO live events.
- * Mount once inside AppProviders when realtime URL is available.
+ * Only connects when NEXT_PUBLIC_REALTIME_URL or NEXT_PUBLIC_REALTIME_ENABLED is set.
  */
 export function RealtimeBridge() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
+    if (!isRealtimeEnabled()) return;
+
     try {
       connectRealtime();
     } catch {

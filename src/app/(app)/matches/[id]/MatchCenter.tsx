@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/football/EmptyState";
 import { EventTimeline } from "@/components/football/EventTimeline";
 import { FavoriteButton } from "@/components/football/FavoriteButton";
 import { LeagueBadge } from "@/components/football/LeagueBadge";
+import { LiveVideoPanel } from "@/components/football/LiveVideoPanel";
 import { MatchCardSkeleton, MatchCenterSkeleton } from "@/components/football/LoadingSkeleton";
 import { MatchStatus } from "@/components/football/MatchStatus";
 import { ScoreDisplay } from "@/components/football/ScoreDisplay";
@@ -25,6 +26,8 @@ import { StatComparison } from "@/components/football/StatComparison";
 import { TeamLogo } from "@/components/football/TeamLogo";
 import { MatchCard } from "@/components/football/MatchCard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Play } from "lucide-react";
 import { useFixture } from "@/hooks/use-fixture";
 import {
   useAddFavorite,
@@ -117,6 +120,9 @@ export function MatchCenter({ fixtureId }: { fixtureId: number }) {
   const stats = fixture.statistics ?? [];
   const homeStats = stats[0];
   const awayStats = stats[1];
+  const streams = fixture.streams ?? [];
+  const hasStreams = streams.length > 0;
+  const defaultTab = isLive && hasStreams ? "watch" : "overview";
 
   return (
     <div className="space-y-4">
@@ -129,6 +135,12 @@ export function MatchCenter({ fixtureId }: { fixtureId: number }) {
         <div className="flex items-center justify-between gap-2 border-b border-border/70 px-3 py-2 sm:px-4">
           <LeagueBadge league={fixture.league} />
           <div className="flex items-center gap-1">
+            {hasStreams ? (
+              <Badge variant="secondary" className="gap-1 text-[10px]">
+                <Play className="h-3 w-3" />
+                Watch
+              </Badge>
+            ) : null}
             <MatchStatus
               status={fixture.status}
               elapsed={fixture.elapsed}
@@ -197,11 +209,12 @@ export function MatchCenter({ fixtureId }: { fixtureId: number }) {
         </div>
       </header>
 
-      <Tabs defaultValue="overview" className="w-full">
+      <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 bg-transparent p-0">
           {(
             [
               ["overview", "Overview"],
+              ["watch", "Watch"],
               ["timeline", "Timeline"],
               ["statistics", "Statistics"],
               ["lineups", "Lineups"],
@@ -214,6 +227,9 @@ export function MatchCenter({ fixtureId }: { fixtureId: number }) {
               className="rounded-md border border-transparent data-[state=active]:border-border"
             >
               {label}
+              {value === "watch" && hasStreams ? (
+                <span className="ml-1 inline-block h-1.5 w-1.5 rounded-full bg-live" />
+              ) : null}
             </TabsTrigger>
           ))}
         </TabsList>
@@ -238,6 +254,10 @@ export function MatchCenter({ fixtureId }: { fixtureId: number }) {
               );
             })
           )}
+        </TabsContent>
+
+        <TabsContent value="watch" className="mt-4">
+          <LiveVideoPanel streams={streams} isLive={isLive} />
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-4">

@@ -32,6 +32,7 @@ export function LeagueBadge({
           width={size}
           height={size}
           className="object-contain"
+          unoptimized
         />
       </span>
       {showName ? (

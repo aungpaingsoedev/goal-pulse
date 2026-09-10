@@ -25,6 +25,7 @@ export function LeagueCard({ league, className, href }: LeagueCardProps) {
           width={40}
           height={40}
           className="h-full w-full object-contain"
+          unoptimized
         />
       </div>
       <div className="min-w-0 flex-1">

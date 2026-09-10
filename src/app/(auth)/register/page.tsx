@@ -3,20 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { createClient } from "@/lib/supabase/client";
-
-function supabaseReady() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return false;
-  if (url.includes("placeholder") || key.includes("placeholder")) return false;
-  return true;
-}
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -24,54 +16,41 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [pending, setPending] = useState(false);
+  const googleEnabled = Boolean(process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!supabaseReady()) {
-      toast.message("Supabase isn’t configured", {
-        description: "Forms work visually; add env keys to enable auth.",
-      });
-      return;
-    }
-
     setPending(true);
     try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { full_name: name || undefined },
-        },
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, name: name || undefined }),
       });
-      if (error) {
-        toast.error(error.message);
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        toast.error(data.error ?? "Registration failed");
         return;
       }
+
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+      if (result?.error) {
+        toast.success("Account created — please sign in");
+        router.replace("/login");
+        return;
+      }
+
       toast.success("Account created");
       router.replace("/");
       router.refresh();
     } catch {
-      toast.message("Supabase isn’t configured");
+      toast.error("Unable to create account");
     } finally {
       setPending(false);
-    }
-  }
-
-  async function signInWithGoogle() {
-    if (!supabaseReady()) {
-      toast.message("Supabase isn’t configured");
-      return;
-    }
-    try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: { redirectTo: `${window.location.origin}/` },
-      });
-      if (error) toast.error(error.message);
-    } catch {
-      toast.message("Supabase isn’t configured");
     }
   }
 
@@ -122,21 +101,24 @@ export default function RegisterPage() {
         </Button>
       </form>
 
-      <div className="relative">
-        <Separator />
-        <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
-          or
-        </span>
-      </div>
-
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full"
-        onClick={() => void signInWithGoogle()}
-      >
-        Continue with Google
-      </Button>
+      {googleEnabled ? (
+        <>
+          <div className="relative">
+            <Separator />
+            <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
+              or
+            </span>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => void signIn("google", { callbackUrl: "/" })}
+          >
+            Continue with Google
+          </Button>
+        </>
+      ) : null}
 
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}

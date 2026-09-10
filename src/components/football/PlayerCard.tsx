@@ -19,6 +19,7 @@ export function PlayerCard({ player, className, href }: PlayerCardProps) {
           width={48}
           height={48}
           className="h-full w-full object-cover"
+          unoptimized
         />
       </div>
       <div className="min-w-0 flex-1">

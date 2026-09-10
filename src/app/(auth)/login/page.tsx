@@ -3,20 +3,12 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { createClient } from "@/lib/supabase/client";
-
-function supabaseReady() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return false;
-  if (url.includes("placeholder") || key.includes("placeholder")) return false;
-  return true;
-}
 
 function LoginForm() {
   const router = useRouter();
@@ -26,57 +18,33 @@ function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
+  const googleEnabled = Boolean(process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!supabaseReady()) {
-      toast.message("Supabase isn’t configured", {
-        description: "Forms work visually; add env keys to enable auth.",
-      });
-      return;
-    }
-
     setPending(true);
     try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.signInWithPassword({
+      const result = await signIn("credentials", {
         email,
         password,
+        redirect: false,
       });
-      if (error) {
-        toast.error(error.message);
+      if (result?.error) {
+        toast.error("Invalid email or password");
         return;
       }
       toast.success("Welcome back");
       router.replace(next);
       router.refresh();
     } catch {
-      toast.message("Supabase isn’t configured");
+      toast.error("Unable to sign in");
     } finally {
       setPending(false);
     }
   }
 
   async function signInWithGoogle() {
-    if (!supabaseReady()) {
-      toast.message("Supabase isn’t configured", {
-        description: "Add Supabase keys to enable Google OAuth.",
-      });
-      return;
-    }
-    try {
-      const supabase = createClient();
-      const origin = window.location.origin;
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${origin}/`,
-        },
-      });
-      if (error) toast.error(error.message);
-    } catch {
-      toast.message("Supabase isn’t configured");
-    }
+    await signIn("google", { callbackUrl: next });
   }
 
   return (
@@ -124,21 +92,24 @@ function LoginForm() {
         </Button>
       </form>
 
-      <div className="relative">
-        <Separator />
-        <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
-          or
-        </span>
-      </div>
-
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full"
-        onClick={() => void signInWithGoogle()}
-      >
-        Continue with Google
-      </Button>
+      {googleEnabled ? (
+        <>
+          <div className="relative">
+            <Separator />
+            <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
+              or
+            </span>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => void signInWithGoogle()}
+          >
+            Continue with Google
+          </Button>
+        </>
+      ) : null}
 
       <p className="text-center text-sm text-muted-foreground">
         New here?{" "}

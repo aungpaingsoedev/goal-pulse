@@ -6,50 +6,56 @@ Premium football live-score platform — **Every match. Every moment.**
 
 - Next.js 16 (App Router) + TypeScript
 - Tailwind CSS v4 + design tokens (dark/light)
-- Supabase (Auth, Postgres, RLS)
+- **Prisma + SQLite** (users, favorites, notifications, cached football entities)
+- **Auth.js** (email/password + optional Google OAuth)
 - TanStack Query
-- API-Football (with mock layer for local demo)
+- Sportmonks Football API v3 (with mock layer for local demo)
 - Zod, Recharts, Framer Motion, Socket.IO-ready realtime
 
 ## Quick start
 
 ```bash
-cp .env.example .env.local
+cp .env.example .env
 npm install
+npx prisma db push
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
-`USE_MOCK_DATA=true` (default in `.env.local`) serves rich demo fixtures without an API key.
+`USE_MOCK_DATA=true` serves rich demo fixtures without a Sportmonks token.
+
+Register at `/register` — favorites and notifications use SQLite via Prisma.
 
 ## Environment
 
 | Variable | Notes |
 |----------|--------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Browser-safe anon key |
-| `SUPABASE_SERVICE_ROLE_KEY` | **Server only** — never expose |
-| `FOOTBALL_API_KEY` | **Server only** — API-Football key |
-| `FOOTBALL_API_URL` | Default `https://v3.football.api-sports.io` |
+| `DATABASE_URL` | SQLite path, e.g. `file:./dev.db` (relative to `prisma/`) |
+| `AUTH_SECRET` | Auth.js secret (required) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Optional Google OAuth |
+| `NEXT_PUBLIC_GOOGLE_AUTH_ENABLED` | Set `true` to show Google buttons |
+| `SPORTMONKS_API_TOKEN` | **Server only** — Sportmonks API token |
+| `SPORTMONKS_API_URL` | Default `https://api.sportmonks.com/v3/football` |
 | `USE_MOCK_DATA` | `true` / `false` |
 | `ADMIN_EMAILS` | Comma-separated admin emails |
 | `CRON_SECRET` | Protects `/api/realtime/poll` |
 
-## Supabase setup
+## Database
 
-1. Create a Supabase project.
-2. Run SQL migrations in order:
-   - `supabase/migrations/001_initial_schema.sql`
-   - `supabase/migrations/002_unified_favorites.sql`
-3. Enable Email + Google Auth providers.
-4. Add redirect URL: `http://localhost:3000/auth/callback` (add callback route if needed).
+Prisma schema: `prisma/schema.prisma`
+
+```bash
+npm run db:push      # sync schema to SQLite
+npm run db:studio    # browse data
+npm run db:generate  # regenerate client
+```
 
 ## Scripts
 
 ```bash
 npm run dev      # development
-npm run build    # production build
+npm run build    # prisma generate + production build
 npm run start    # start production server
 npm run lint     # ESLint
 ```
@@ -57,14 +63,14 @@ npm run lint     # ESLint
 ## Architecture
 
 ```
-API-Football → football service → memory cache → API routes → React Query → UI
-                                      ↓
-                                 sync service → Socket.IO events
+Sportmonks API → football service → memory cache → API routes → React Query → UI
+Prisma/SQLite  → users / favorites / notifications / sync cache
+Auth.js        → sessions (JWT) + optional Google
 ```
 
-- Football API key never reaches the client.
+- Sportmonks token never reaches the client.
+- Match Center **Watch** tab shows TV stations / stream links from Sportmonks.
 - Live matches refetch every ~15s via TanStack Query.
-- `/api/realtime/poll` detects score/status/event diffs and emits websocket events.
 
 ## Routes
 
@@ -80,8 +86,8 @@ API-Football → football service → memory cache → API routes → React Quer
 
 ## Production checklist
 
-1. Set real Supabase + API-Football keys; set `USE_MOCK_DATA=false`.
-2. Apply migrations and RLS.
-3. Configure Google OAuth.
-4. Schedule `/api/realtime/poll` every 15–30s during match windows.
-5. Promote admins via `profiles.role = 'admin'` or `ADMIN_EMAILS`.
+1. Set a strong `AUTH_SECRET` and real `DATABASE_URL` (SQLite file or migrate to Postgres later).
+2. Set `SPORTMONKS_API_TOKEN`; set `USE_MOCK_DATA=false`.
+3. Optionally configure Google OAuth.
+4. Schedule `/api/realtime/poll` during match windows.
+5. Promote admins via `ADMIN_EMAILS` or `User.role = "admin"`.

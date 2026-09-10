@@ -6,6 +6,7 @@ import {
   getCachedLiveFixtures,
 } from "@/lib/cache/football-cache";
 import { memoryCache } from "@/lib/cache/memory-cache";
+import { prisma } from "@/lib/db";
 import { shouldUseMockData } from "@/lib/football";
 import { getSyncMeta } from "@/lib/sync/sync-meta";
 
@@ -25,23 +26,13 @@ export async function GET() {
     const today = new Date().toISOString().slice(0, 10);
     const mockMode = shouldUseMockData();
 
-    const [live, todays, leagues] = await Promise.all([
+    const [live, todays, leagues, usersCount, teamsCount] = await Promise.all([
       getCachedLiveFixtures().catch(() => []),
       getCachedFixturesByDate(today).catch(() => []),
       getCachedLeagues({ current: true }).catch(() => []),
+      prisma.user.count().catch(() => null),
+      prisma.team.count().catch(() => null),
     ]);
-
-    let usersCount: number | null = null;
-    if (admin.ctx?.supabase) {
-      try {
-        const { count } = await admin.ctx.supabase
-          .from("profiles")
-          .select("id", { count: "exact", head: true });
-        usersCount = count ?? 0;
-      } catch {
-        usersCount = null;
-      }
-    }
 
     const sync = getSyncMeta();
 
@@ -49,7 +40,7 @@ export async function GET() {
       liveMatches: live.length,
       todaysMatches: todays.length,
       leagues: leagues.length,
-      trackedTeams: null as number | null,
+      trackedTeams: teamsCount,
       users: usersCount,
       cacheEntries: memoryCache.size(),
       mockMode,

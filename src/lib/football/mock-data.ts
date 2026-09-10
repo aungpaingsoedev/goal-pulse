@@ -354,6 +354,24 @@ export const MOCK_FIXTURES: Fixture[] = [
     ],
     statistics: makeStats(50, 40),
     lineups: makeLineups(50, 40),
+    streams: [
+      {
+        id: "sky-sports",
+        name: "Sky Sports Main Event",
+        url: null,
+        type: "tv",
+        country: "England",
+        logo: null,
+      },
+      {
+        id: "yt-highlight-mci-liv",
+        name: "Match Highlights",
+        url: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        type: "highlight",
+        country: null,
+        logo: null,
+      },
+    ],
   },
   {
     id: 1200002,
@@ -374,6 +392,16 @@ export const MOCK_FIXTURES: Fixture[] = [
       makeEvent(1200002, 2, 27, 49, 2207, "Moisés Caicedo", "Card", "Yellow Card"),
     ],
     statistics: makeStats(42, 49),
+    streams: [
+      {
+        id: "tnt-sports",
+        name: "TNT Sports 1",
+        url: null,
+        type: "tv",
+        country: "England",
+        logo: null,
+      },
+    ],
   },
   {
     id: 1200003,
@@ -397,6 +425,24 @@ export const MOCK_FIXTURES: Fixture[] = [
       makeEvent(1200003, 2, 38, 529, 521, "Robert Lewandowski", "Goal", "Normal Goal", "Lamine Yamal", 386822),
     ],
     statistics: makeStats(541, 529),
+    streams: [
+      {
+        id: "movistar",
+        name: "Movistar LaLiga",
+        url: null,
+        type: "tv",
+        country: "Spain",
+        logo: null,
+      },
+      {
+        id: "yt-highlight-rma-bar",
+        name: "El Clásico Highlights",
+        url: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        type: "highlight",
+        country: null,
+        logo: null,
+      },
+    ],
   },
   {
     id: 1200004,
@@ -421,6 +467,16 @@ export const MOCK_FIXTURES: Fixture[] = [
       makeEvent(1200004, 3, 41, 157, 522, "Jamal Musiala", "Goal", "Normal Goal"),
       makeEvent(1200004, 4, 58, 165, 1097, "Julian Brandt", "Goal", "Normal Goal"),
       makeEvent(1200004, 5, 71, 157, 278, "Leroy Sané", "Goal", "Normal Goal"),
+    ],
+    streams: [
+      {
+        id: "sky-de",
+        name: "Sky Sport Bundesliga",
+        url: null,
+        type: "tv",
+        country: "Germany",
+        logo: null,
+      },
     ],
   },
   {

@@ -1,48 +1,41 @@
 import { getOptionalAuth } from "@/lib/api/auth";
 import { err, ok, zodErr } from "@/lib/api/response";
+import { prisma } from "@/lib/db";
 import { markNotificationsSchema } from "@/lib/validation/schemas";
 import type { AppNotification } from "@/types/football";
 
-type NotificationRow = {
+function mapNotification(row: {
   id: string;
-  user_id: string;
+  userId: string;
   title: string;
   message: string;
   type: string;
   read: boolean;
-  created_at: string;
-};
-
-function mapNotification(row: NotificationRow): AppNotification {
+  createdAt: Date;
+}): AppNotification {
   return {
     id: row.id,
-    userId: row.user_id,
+    userId: row.userId,
     title: row.title,
     message: row.message,
     type: row.type,
     read: row.read,
-    createdAt: row.created_at,
+    createdAt: row.createdAt.toISOString(),
   };
 }
 
 export async function GET() {
   try {
-    const auth = await getOptionalAuth();
-    if (!auth) return ok([] as AppNotification[]);
+    const authCtx = await getOptionalAuth();
+    if (!authCtx) return ok([] as AppNotification[]);
 
-    const { data, error } = await auth.supabase
-      .from("notifications")
-      .select("id, user_id, title, message, type, read, created_at")
-      .eq("user_id", auth.user.id)
-      .order("created_at", { ascending: false })
-      .limit(100);
+    const rows = await prisma.notification.findMany({
+      where: { userId: authCtx.user.id },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
 
-    if (error) {
-      console.warn("[api/notifications GET] fallback:", error.message);
-      return ok([] as AppNotification[]);
-    }
-
-    return ok(((data ?? []) as NotificationRow[]).map(mapNotification));
+    return ok(rows.map(mapNotification));
   } catch (error) {
     console.error("[api/notifications GET]", error);
     return ok([] as AppNotification[]);
@@ -51,8 +44,8 @@ export async function GET() {
 
 export async function PATCH(request: Request) {
   try {
-    const auth = await getOptionalAuth();
-    if (!auth) {
+    const authCtx = await getOptionalAuth();
+    if (!authCtx) {
       return err("Authentication required", 401, { code: "UNAUTHORIZED" });
     }
 
@@ -60,31 +53,38 @@ export async function PATCH(request: Request) {
     const parsed = markNotificationsSchema.safeParse(body);
     if (!parsed.success) return zodErr(parsed.error);
 
-    let query = auth.supabase
-      .from("notifications")
-      .update({ read: true })
-      .eq("user_id", auth.user.id);
+    const where = {
+      userId: authCtx.user.id,
+      ...(parsed.data.all
+        ? { read: false }
+        : parsed.data.ids?.length
+          ? { id: { in: parsed.data.ids } }
+          : parsed.data.id
+            ? { id: parsed.data.id }
+            : {}),
+    };
 
-    if (parsed.data.all) {
-      query = query.eq("read", false);
-    } else if (parsed.data.ids?.length) {
-      query = query.in("id", parsed.data.ids);
-    } else if (parsed.data.id) {
-      query = query.eq("id", parsed.data.id);
-    }
+    await prisma.notification.updateMany({
+      where,
+      data: { read: true },
+    });
 
-    const { data, error } = await query
-      .select("id, user_id, title, message, type, read, created_at");
+    const rows = await prisma.notification.findMany({
+      where: {
+        userId: authCtx.user.id,
+        ...(parsed.data.all
+          ? {}
+          : parsed.data.ids?.length
+            ? { id: { in: parsed.data.ids } }
+            : parsed.data.id
+              ? { id: parsed.data.id }
+              : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
 
-    if (error) {
-      console.warn("[api/notifications PATCH]", error.message);
-      return err("Failed to update notifications", 503, {
-        code: "NOTIFICATIONS_UNAVAILABLE",
-        details: error.message,
-      });
-    }
-
-    return ok(((data ?? []) as NotificationRow[]).map(mapNotification));
+    return ok(rows.map(mapNotification));
   } catch (error) {
     console.error("[api/notifications PATCH]", error);
     return err("Failed to update notifications", 500, {

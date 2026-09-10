@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,27 @@ import { cn } from "@/lib/utils";
 
 export function ThemeToggle({ className }: { className?: string }) {
   const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Avoid SSR/client theme mismatch — icons use CSS `.dark` classes.
+  if (!mounted) {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        aria-label="Toggle theme"
+        className={cn("relative", className)}
+      >
+        <Sun className="h-4 w-4" />
+      </Button>
+    );
+  }
+
   const isDark = resolvedTheme !== "light";
 
   return (

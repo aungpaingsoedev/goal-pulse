@@ -1,42 +1,44 @@
 import "server-only";
 
-import { createClient } from "@/lib/supabase/server";
-import type { User, SupabaseClient } from "@supabase/supabase-js";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 
-export type AuthContext = {
-  user: User;
-  supabase: SupabaseClient;
+export type AuthUser = {
+  id: string;
+  email: string;
+  name?: string | null;
+  image?: string | null;
+  role: string;
 };
 
-function hasSupabaseEnv(): boolean {
-  return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  );
-}
+export type AuthContext = {
+  user: AuthUser;
+};
 
 function isMockMode(): boolean {
   return (
-    process.env.USE_MOCK_DATA === "true" || !process.env.FOOTBALL_API_KEY
+    process.env.USE_MOCK_DATA === "true" ||
+    !(process.env.SPORTMONKS_API_TOKEN || process.env.FOOTBALL_API_KEY)
   );
 }
 
 /**
- * Returns authenticated user + supabase client, or null when
- * auth/env is unavailable (never throws for missing config).
+ * Returns the authenticated user, or null when unauthenticated.
  */
 export async function getOptionalAuth(): Promise<AuthContext | null> {
-  if (!hasSupabaseEnv()) return null;
-
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
+    const session = await auth();
+    if (!session?.user?.id) return null;
 
-    if (error || !user) return null;
-    return { user, supabase };
+    return {
+      user: {
+        id: session.user.id,
+        email: session.user.email ?? "",
+        name: session.user.name,
+        image: session.user.image,
+        role: session.user.role ?? "user",
+      },
+    };
   } catch {
     return null;
   }
@@ -51,31 +53,39 @@ export type AdminGate =
   | { ok: false; reason: "unauthorized" | "forbidden" | "unavailable" };
 
 /**
- * Admin gate for sync/stats. In mock mode without Supabase, allows bypass.
+ * Admin gate for sync/stats. In mock mode without a session, allows bypass
+ * for local development.
  */
 export async function requireAdmin(): Promise<AdminGate> {
-  if (!hasSupabaseEnv()) {
+  const ctx = await getOptionalAuth();
+
+  if (!ctx) {
     if (isMockMode()) {
       return { ok: true, ctx: null, bypass: true };
     }
-    return { ok: false, reason: "unavailable" };
+    return { ok: false, reason: "unauthorized" };
   }
 
-  const ctx = await getOptionalAuth();
-  if (!ctx) return { ok: false, reason: "unauthorized" };
-
   try {
-    const { data: profile } = await ctx.supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", ctx.user.id)
-      .maybeSingle();
+    const profile = await prisma.user.findUnique({
+      where: { id: ctx.user.id },
+      select: { role: true, email: true },
+    });
 
-    if (profile?.role === "admin") {
+    const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    const isAdmin =
+      profile?.role === "admin" ||
+      adminEmails.includes((profile?.email ?? ctx.user.email).toLowerCase());
+
+    if (isAdmin) {
       return { ok: true, ctx, bypass: false };
     }
 
-    if (isMockMode() && !profile) {
+    if (isMockMode()) {
       return { ok: true, ctx, bypass: true };
     }
 

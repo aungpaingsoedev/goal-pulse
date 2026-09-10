@@ -59,6 +59,11 @@ export function LiveMatchCard({ fixture, className }: LiveMatchCardProps) {
       <div className="mb-2 flex items-center justify-between gap-2">
         <LeagueBadge league={fixture.league} />
         <div className="flex items-center gap-2">
+          {fixture.streams && fixture.streams.length > 0 ? (
+            <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              ▶ Watch
+            </span>
+          ) : null}
           <LiveIndicator />
           <span className="font-mono text-xs font-semibold text-live">
             {clock}

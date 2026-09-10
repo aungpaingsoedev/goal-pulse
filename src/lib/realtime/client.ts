@@ -13,9 +13,20 @@ export function getRealtimeSocket(): Socket | null {
   return socket;
 }
 
+/** Socket.IO is opt-in — avoid noisy WS errors when no realtime server is running. */
+export function isRealtimeEnabled(): boolean {
+  if (typeof process === "undefined") return false;
+  if (process.env.NEXT_PUBLIC_REALTIME_ENABLED === "true") return true;
+  return Boolean(process.env.NEXT_PUBLIC_REALTIME_URL);
+}
+
 export function connectRealtime(url?: string): Socket {
   if (typeof window === "undefined") {
     throw new Error("connectRealtime() can only be called in the browser");
+  }
+
+  if (!isRealtimeEnabled() && !url) {
+    throw new Error("Realtime is disabled");
   }
 
   if (socket?.connected) {
@@ -33,8 +44,8 @@ export function connectRealtime(url?: string): Socket {
     autoConnect: true,
     transports: ["websocket", "polling"],
     reconnection: true,
-    reconnectionAttempts: 10,
-    reconnectionDelay: 1000,
+    reconnectionAttempts: 3,
+    reconnectionDelay: 2000,
   });
 
   return socket;

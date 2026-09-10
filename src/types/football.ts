@@ -132,6 +132,15 @@ export interface FixtureLineup {
   substitutes: LineupPlayer[];
 }
 
+export interface MatchStream {
+  id: number | string;
+  name: string;
+  url: string | null;
+  type: "tv" | "stream" | "highlight" | "other";
+  country?: string | null;
+  logo?: string | null;
+}
+
 export interface Fixture {
   id: number;
   referee: string | null;
@@ -154,6 +163,7 @@ export interface Fixture {
   events?: MatchEvent[];
   statistics?: MatchStatistics[];
   lineups?: FixtureLineup[];
+  streams?: MatchStream[];
 }
 
 export interface StandingRecord {

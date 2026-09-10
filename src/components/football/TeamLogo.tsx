@@ -46,6 +46,7 @@ export function TeamLogo({
           height={size}
           className="object-contain p-0.5"
           priority={priority}
+          unoptimized
           onError={() => setFailed(true)}
         />
       ) : (
